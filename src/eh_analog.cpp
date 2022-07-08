@@ -95,3 +95,34 @@ FloatProducer* ConnectTankSender(Adafruit_ADS1115* ads1115, int channel,
 
   return tank_level;
 }
+
+FloatProducer* ConnectVoltageSource(Adafruit_ADS1115* ads1115, int channel,
+                                 String name, String sk_path) {
+  const uint ads_read_delay = 500;  // ms
+
+  char config_path[80];
+  char meta_display_name[80];
+  char meta_description[80];
+
+  auto sender_voltage =
+      new RepeatSensor<float>(ads_read_delay, [ads1115, channel]() {
+        int16_t adc_output = ads1115->readADC_SingleEnded(channel);
+        float adc_output_volts = ads1115->computeVolts(adc_output);
+        //debugI("ADC %d register=%d voltage=%fV, scaled=%fV", channel, adc_output, adc_output_volts, kAnalogInputScale * adc_output_volts);
+        return kAnalogInputScale * adc_output_volts;
+      });
+
+  snprintf(config_path, sizeof(config_path), "/Voltage %s/SK Path",
+           name.c_str());
+  snprintf(meta_display_name, sizeof(meta_display_name), "Voltage %s",
+           name.c_str());
+  snprintf(meta_description, sizeof(meta_description),
+           "Measured voltage %s sender", name.c_str());
+  auto sender_voltage_sk_output = new SKOutputFloat(
+      sk_path, config_path,
+      new SKMetadata("V", meta_display_name, meta_description));
+
+  sender_voltage->connect_to(sender_voltage_sk_output);
+
+  return sender_voltage;
+}
