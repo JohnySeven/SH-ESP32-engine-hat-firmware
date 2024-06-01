@@ -23,9 +23,10 @@
 #include "sensesp_app_builder.h"
 #include "sensesp_onewire/onewire_temperature.h"
 #include "sensesp/transforms/linear.h"
+#include "sensesp/transforms/time_counter.h"
+//#include "sensesp/sensors/"
 
 using namespace sensesp;
-
 // I2C pins on SH-ESP32
 const int kSDAPin = 16;
 const int kSCLPin = 17;
@@ -145,7 +146,23 @@ void setup() {
   // Connect the tacho senders
   auto tacho_1_frequency = ConnectTachoSender(kDigitalInputPin1, "port");
   auto tacho_2_frequency = ConnectTachoSender(kDigitalInputPin2, "starboard");
-
+  //Calculate engine hours
+  //port engine hours
+  auto* port_engine_hours = new TimeCounter<float>("/Port Engine/Hours");
+    port_engine_hours->set_description(
+        "Engine hours based on the port engine input, in seconds.");
+    port_engine_hours->set_sort_order(5400);
+    tacho_1_frequency->connect_to(port_engine_hours);
+  //starboard engine hours
+  auto* starboard_engine_hours = new TimeCounter<float>("/Port Engine/Hours");
+    starboard_engine_hours->set_description(
+        "Engine hours based on the port engine input, in seconds.");
+    starboard_engine_hours->set_sort_order(5400);
+    tacho_1_frequency->connect_to(starboard_engine_hours);
+  //engine hours to Signal K
+  port_engine_hours->connect_to(new SKOutputFloat("propulsion.port.runTime", "/Port Engine/Hours"));
+  starboard_engine_hours->connect_to(new SKOutputFloat("propulsion.starboard.runTime", "/Starboard Engine/Hours"));
+  //other digital inputs
   auto input_1 = new DigitalInputState(kDigitalInputPin3, INPUT);
   auto input_2 = new DigitalInputState(kDigitalInputPin4, INPUT);
 
@@ -174,6 +191,7 @@ void setup() {
   third->connect_to(new Linear(1.0, 0.0, "/onewire_2/linear"))
       ->connect_to(new SKOutputFloat("environment.third.temperature",
                                      "/onewire_2/skPath"));
+
 
   // Connect the alarm inputs
   //auto alarm_2_input = ConnectAlarmSender(kDigitalInputPin2, "2");
