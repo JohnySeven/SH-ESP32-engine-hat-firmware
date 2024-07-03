@@ -154,14 +154,14 @@ void setup() {
     port_engine_hours->set_sort_order(5400);
     tacho_1_frequency->connect_to(port_engine_hours);
   //starboard engine hours
-  auto* starboard_engine_hours = new TimeCounter<float>("/Port Engine/Hours");
+  auto* starboard_engine_hours = new TimeCounter<float>("/Starboard Engine/Hours");
     starboard_engine_hours->set_description(
-        "Engine hours based on the port engine input, in seconds.");
-    starboard_engine_hours->set_sort_order(5400);
-    tacho_1_frequency->connect_to(starboard_engine_hours);
+        "Engine hours based on the starboard engine input, in seconds.");
+    starboard_engine_hours->set_sort_order(5500);
+    tacho_2_frequency->connect_to(starboard_engine_hours);
   //engine hours to Signal K
-  port_engine_hours->connect_to(new SKOutputFloat("propulsion.port.runTime", "/Port Engine/Hours"));
-  starboard_engine_hours->connect_to(new SKOutputFloat("propulsion.starboard.runTime", "/Starboard Engine/Hours"));
+  port_engine_hours->connect_to(new SKOutputFloat("propulsion.port.runTime", "/Port Engine/Hours", "s"));
+  starboard_engine_hours->connect_to(new SKOutputFloat("propulsion.starboard.runTime", "/Starboard Engine/Hours", "s"));
   //other digital inputs
   auto input_1 = new DigitalInputState(kDigitalInputPin3, INPUT);
   auto input_2 = new DigitalInputState(kDigitalInputPin4, INPUT);
@@ -211,20 +211,29 @@ void setup() {
   // Connect the outputs to the display
   if (display_present) {
     app.onRepeat(1000, []() {
-      PrintValue(display, 1, "IP:", WiFi.localIP().toString());
+      if(WiFi.isConnected())
+      {
+        PrintValue(display, 1, "IP", WiFi.localIP().toString());
+      }
+      else
+      {
+        PrintValue(display, 1, "WIFI","disconnected");
+      }
+
     });
 
     tacho_1_frequency->connect_to(new LambdaConsumer<float>(
-        [](float value) { PrintValue(display, 3, "RPM 1", 60 * value); }));
+        [](float value) { PrintValue(display, 2, "RPM 1", 60 * value); }));
 
-    // Create a "christmas tree" display for the alarms
-    app.onRepeat(1000, []() {
-      char state_string[5] = {};
-      for (int i = 0; i < 4; i++) {
-        state_string[i] = alarm_states[i] ? '*' : '_';
-      }
-      PrintValue(display, 4, "Alarm", state_string);
-    });
+    tacho_2_frequency->connect_to(new LambdaConsumer<float>(
+        [](float value) { PrintValue(display, 3, "RPM 2", 60 * value); }));
+
+    voltageC->connect_to(new LambdaConsumer<float>(
+    [](float value) { PrintValue(display, 4, "AGM", value); }));
+
+    voltageD->connect_to(new LambdaConsumer<float>(
+        [](float value) { PrintValue(display, 5, "LPF", value); }));
+
   }
 
   // Start networking, SK server connections and other SensESP internals
